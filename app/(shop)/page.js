@@ -72,7 +72,7 @@ export default async function HomePage() {
     <div className="overflow-x-hidden bg-white">
 
       {/* Intro / hero copy: premium editorial opener */}
-      <section className="max-w-2xl mx-auto px-6 pt-16 sm:pt-24 pb-10 sm:pb-14 text-center">
+      {/* <section className="max-w-2xl mx-auto px-6 pt-16 sm:pt-24 pb-10 sm:pb-14 text-center">
         <span
           className="inline-block text-[10px] sm:text-[11px] font-semibold uppercase tracking-[4px]"
           style={{ color: COFFEE_FAINT, fontFamily: FONT_SANS }}
@@ -85,10 +85,10 @@ export default async function HomePage() {
           style={{ color: COFFEE, fontFamily: FONT_SERIF, fontWeight: 400, letterSpacing: '-0.01em' }}
         >
           Crafted for the Trendsetters of Today
-        </h1>
+        </h1> */}
 
         {/* Thin center divider: a quiet, premium separator instead of a rule */}
-        <div className="flex items-center justify-center gap-3 mt-6 sm:mt-7">
+        {/* <div className="flex items-center justify-center gap-3 mt-6 sm:mt-7">
           <span style={{ width: '28px', height: '1px', background: HAIRLINE }} />
           <span className="w-1 h-1 rounded-full" style={{ background: LIGHT_PEACH }} />
           <span style={{ width: '28px', height: '1px', background: HAIRLINE }} />
@@ -109,7 +109,7 @@ export default async function HomePage() {
         >
           Wrap yourself in beauty every time you step out.
         </p>
-      </section>
+      </section> */}
 
       {/* Banner */}
       <BannerCarousel banners={banners} />
