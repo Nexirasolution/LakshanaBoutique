@@ -1,0 +1,456 @@
+'use client';
+
+import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
+import Image from 'next/image';
+import { useRouter } from 'next/navigation';
+import { Search, ShoppingBag, Menu, X, ChevronDown, ClipboardList, Heart } from 'lucide-react';
+import { useCart } from './CartContext';
+import { useWishlist } from './WhishlistContext';
+import CouponMarquee from './CouponMarquee';
+
+const COFFEE = '#3E2B22';
+const COFFEE_FAINT = '#9C8A7E';
+const PEACH = '#D99667';
+const HAIRLINE = '#EDE6DE';
+const PAPER = '#FFFFFF';
+
+const SHOP_GROUPS = [
+  { key: 'bestseller', label: 'Best Sellers', qs: 'flag=bestseller' },
+  { key: 'topseller', label: 'Top Sellers', qs: 'flag=topseller' },
+  { key: 'newarrival', label: 'New Arrivals', qs: 'flag=newarrival' },
+];
+
+// `categories` = main categories, each with its own `subcategories` array.
+// It is loaded and cached on the server (see lib/navCategories.js and the shop
+// layout), so the browser no longer calls /api/categories on every page view.
+export default function Navbar({ categories = [] }) {
+  const [query, setQuery] = useState('');
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [shopOpen, setShopOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [mobileGroupOpen, setMobileGroupOpen] = useState(null);
+  const [mobileCatOpen, setMobileCatOpen] = useState(null); // `${groupKey}:${categoryId}` of the expanded subcategory list
+
+  const closeTimer = useRef(null);
+
+  const router = useRouter();
+  const { count } = useCart();
+  const { wishlist } = useWishlist();
+  const wishlistCount = wishlist?.length || 0;
+
+  // Lock background scroll while the full-screen mobile menu is open,
+  // so the homepage doesn't scroll/run underneath it.
+  useEffect(() => {
+    if (menuOpen) {
+      const scrollY = window.scrollY;
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.left = '0';
+      document.body.style.right = '0';
+      document.body.style.overflow = 'hidden';
+
+      return () => {
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.left = '';
+        document.body.style.right = '';
+        document.body.style.overflow = '';
+        window.scrollTo(0, scrollY);
+      };
+    }
+  }, [menuOpen]);
+
+  function onSearch(e) {
+    e.preventDefault();
+    if (query.trim()) router.push(`/search?q=${encodeURIComponent(query.trim())}`);
+    setSearchOpen(false);
+  }
+
+  function openShop() {
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+    setShopOpen(true);
+  }
+  function scheduleCloseShop() {
+    closeTimer.current = setTimeout(() => setShopOpen(false), 150);
+  }
+
+  function categoryHref(slug, qs) {
+    return `/category/${slug}?${qs}`;
+  }
+
+  function closeMobileMenu() {
+    setMenuOpen(false);
+    setMobileGroupOpen(null);
+    setMobileCatOpen(null);
+  }
+
+  return (
+    <>
+      <CouponMarquee />
+
+      <header className="sticky top-0 z-50" style={{ background: PAPER, borderBottom: `1px solid ${HAIRLINE}` }}>
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="grid grid-cols-3 items-center">
+            {/* Left: mobile toggle + primary links */}
+            <div className="flex items-center gap-1 justify-self-start">
+              <button
+                className="md:hidden p-2 -ml-2"
+                style={{ color: COFFEE }}
+                onClick={() => setMenuOpen((v) => !v)}
+                aria-label="Menu"
+              >
+                {menuOpen ? <X size={20} strokeWidth={1.5} /> : <Menu size={20} strokeWidth={1.5} />}
+              </button>
+
+              <nav className="hidden md:flex items-center gap-8">
+                <Link
+                  href="/"
+                  className="text-[13px] font-normal tracking-[1.5px] uppercase transition-colors"
+                  style={{ color: COFFEE }}
+                >
+                  Home
+                </Link>
+
+                <div className="relative" onMouseEnter={openShop} onMouseLeave={scheduleCloseShop}>
+                  <button
+                    className="text-[13px] font-normal tracking-[1.5px] uppercase transition-colors"
+                    style={{ color: shopOpen ? PEACH : COFFEE }}
+                  >
+                    Shop
+                  </button>
+
+                  {shopOpen && categories.length > 0 && (
+                    <div className="absolute left-0 top-full pt-5" style={{ width: '620px' }}>
+                      <div
+                        style={{ background: PAPER, borderTop: `1px solid ${COFFEE}` }}
+                        className="py-6 px-6 grid grid-cols-3 gap-8 max-h-[70vh] overflow-y-auto"
+                      >
+                        {SHOP_GROUPS.map((group) => (
+                          <div key={group.key}>
+                            <div
+                              className="text-[11px] font-semibold tracking-[1.5px] uppercase mb-3 pb-2"
+                              style={{ color: COFFEE, borderBottom: `1px solid ${HAIRLINE}` }}
+                            >
+                              {group.label}
+                            </div>
+                            <div className="flex flex-col gap-2.5">
+                              {categories.map((c) => (
+                                <div key={c._id}>
+                                  <Link
+                                    href={categoryHref(c.slug, group.qs)}
+                                    prefetch={false}
+                                    onClick={() => setShopOpen(false)}
+                                    className="py-0.5 text-[13px] font-medium tracking-wide transition-colors block"
+                                    style={{ color: COFFEE }}
+                                    onMouseEnter={(e) => (e.currentTarget.style.color = PEACH)}
+                                    onMouseLeave={(e) => (e.currentTarget.style.color = COFFEE)}
+                                  >
+                                    {c.name}
+                                  </Link>
+
+                                  {c.subcategories?.length > 0 && (
+                                    <div className="flex flex-col mt-1 pl-3" style={{ borderLeft: `1px solid ${HAIRLINE}` }}>
+                                      {c.subcategories.map((sub) => (
+                                        <Link
+                                          key={sub._id}
+                                          href={categoryHref(sub.slug, group.qs)}
+                                          prefetch={false}
+                                          onClick={() => setShopOpen(false)}
+                                          className="py-1 text-[12px] tracking-wide transition-colors"
+                                          style={{ color: COFFEE_FAINT }}
+                                          onMouseEnter={(e) => (e.currentTarget.style.color = COFFEE)}
+                                          onMouseLeave={(e) => (e.currentTarget.style.color = COFFEE_FAINT)}
+                                        >
+                                          {sub.name}
+                                        </Link>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <Link
+                  href="/orders"
+                  className="text-[13px] font-normal tracking-[1.5px] uppercase transition-colors"
+                  style={{ color: COFFEE }}
+                >
+                  Orders
+                </Link>
+              </nav>
+            </div>
+
+            {/* Center: logo */}
+            <Link href="/" className="flex items-center justify-self-center">
+              <div className="relative w-28 h-28 sm:w-36 sm:h-36">
+                {/* `sizes` stops Next from generating huge srcset variants for a small logo */}
+                <Image
+                  src="/logo.png"
+                  alt="Tirupur Clothing Hub"
+                  fill
+                  sizes="(min-width: 640px) 144px, 112px"
+                  className="object-contain"
+                  priority
+                />
+              </div>
+            </Link>
+
+            {/* Right: search + wishlist + cart */}
+            <div className="flex items-center gap-2.5 justify-self-end">
+              <button
+                className="flex items-center justify-center w-10 h-10 rounded-full transition-colors"
+                style={{ color: COFFEE, border: `1px solid ${HAIRLINE}` }}
+                onClick={() => setSearchOpen((v) => !v)}
+                aria-label="Search"
+              >
+                <Search size={16} strokeWidth={1.5} />
+              </button>
+
+              {/* <Link
+                href="/wishlist"
+                className="relative flex items-center justify-center w-10 h-10 rounded-full transition-colors"
+                style={{ color: COFFEE, border: `1px solid ${HAIRLINE}` }}
+                aria-label="Wishlist"
+              >
+                <Heart size={16} strokeWidth={1.5} />
+                {wishlistCount > 0 && (
+                  <span
+                    className="absolute -top-1 -right-1 text-[9px] font-semibold rounded-full w-[16px] h-[16px] flex items-center justify-center text-white"
+                    style={{ background: PEACH }}
+                  >
+                    {wishlistCount > 9 ? '9+' : wishlistCount}
+                  </span>
+                )}
+              </Link> */}
+
+              <Link
+                href="/cart"
+                className="relative flex items-center justify-center w-10 h-10 rounded-full transition-colors"
+                style={{ color: COFFEE, border: `1px solid ${HAIRLINE}` }}
+                aria-label="Cart"
+              >
+                <ShoppingBag size={16} strokeWidth={1.5} />
+                {count > 0 && (
+                  <span
+                    className="absolute -top-1 -right-1 text-[9px] font-semibold rounded-full w-[16px] h-[16px] flex items-center justify-center text-white"
+                    style={{ background: PEACH }}
+                  >
+                    {count > 9 ? '9+' : count}
+                  </span>
+                )}
+              </Link>
+            </div>
+          </div>
+
+          {searchOpen && (
+            <form
+              onSubmit={onSearch}
+              className="flex items-center gap-2 py-3 mb-1"
+              style={{ borderTop: `1px solid ${HAIRLINE}` }}
+            >
+              <Search size={15} strokeWidth={1.5} style={{ color: COFFEE_FAINT }} />
+              <input
+                autoFocus
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search kurtis, nighties, innerwear..."
+                className="bg-transparent outline-none w-full text-sm"
+                style={{ color: COFFEE }}
+              />
+            </form>
+          )}
+        </div>
+      </header>
+
+      {/* Mobile menu: full-screen overlay, not inline, so the homepage
+          doesn't sit (or scroll) behind it while open. */}
+      {menuOpen && (
+        <div
+          className="md:hidden fixed inset-0 z-[60] flex flex-col"
+          style={{ background: PAPER }}
+        >
+          {/* Overlay header: logo + close button, mirrors the main header height */}
+          <div
+            className="flex items-center justify-between px-6 py-4"
+            style={{ borderBottom: `1px solid ${HAIRLINE}` }}
+          >
+            <div className="relative w-16 h-16">
+              <Image
+                src="/logo.png"
+                alt="Tirupur Clothing Hub"
+                fill
+                sizes="64px"
+                className="object-contain"
+              />
+            </div>
+            <button
+              className="p-2 -mr-2"
+              style={{ color: COFFEE }}
+              onClick={closeMobileMenu}
+              aria-label="Close menu"
+            >
+              <X size={22} strokeWidth={1.5} />
+            </button>
+          </div>
+
+          {/* Scrollable menu body: only this area scrolls, page behind stays fixed */}
+          <nav className="flex-1 overflow-y-auto flex flex-col px-6 py-2">
+            <Link
+              href="/"
+              onClick={closeMobileMenu}
+              className="py-3.5 text-[14px] tracking-[1.5px] uppercase"
+              style={{ color: COFFEE, borderBottom: `1px solid ${HAIRLINE}` }}
+            >
+              Home
+            </Link>
+
+            <div
+              className="py-3.5 text-[14px] tracking-[1.5px] uppercase"
+              style={{ color: COFFEE, borderBottom: `1px solid ${HAIRLINE}` }}
+            >
+              Shop
+            </div>
+
+            {SHOP_GROUPS.map((group) => (
+              <div key={group.key} style={{ borderBottom: `1px solid ${HAIRLINE}` }}>
+                <button
+                  className="w-full flex items-center justify-between py-3 pl-3 text-[13px] tracking-wide uppercase"
+                  style={{ color: mobileGroupOpen === group.key ? PEACH : COFFEE_FAINT }}
+                  onClick={() => setMobileGroupOpen((v) => (v === group.key ? null : group.key))}
+                >
+                  {group.label}
+                  <ChevronDown
+                    size={14}
+                    strokeWidth={1.5}
+                    style={{
+                      transform: mobileGroupOpen === group.key ? 'rotate(180deg)' : 'rotate(0deg)',
+                      transition: 'transform 150ms ease',
+                    }}
+                  />
+                </button>
+
+                {mobileGroupOpen === group.key && (
+                  <div className="flex flex-col pb-3">
+                    {categories.map((c) => {
+                      const catKey = `${group.key}:${c._id}`;
+                      const hasSubs = c.subcategories?.length > 0;
+                      const isCatOpen = mobileCatOpen === catKey;
+                      return (
+                        <div key={c._id} className="flex flex-col">
+                          <div className="flex items-center">
+                            <Link
+                              href={categoryHref(c.slug, group.qs)}
+                              prefetch={false}
+                              onClick={closeMobileMenu}
+                              className="flex-1 py-2.5 pl-6 text-[13px] tracking-wide"
+                              style={{ color: COFFEE_FAINT }}
+                            >
+                              {c.name}
+                            </Link>
+                            {hasSubs && (
+                              <button
+                                onClick={() => setMobileCatOpen((v) => (v === catKey ? null : catKey))}
+                                className="px-3 py-2.5"
+                                aria-label={`Toggle ${c.name} subcategories`}
+                              >
+                                <ChevronDown
+                                  size={12}
+                                  strokeWidth={1.5}
+                                  style={{
+                                    color: COFFEE_FAINT,
+                                    transform: isCatOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                                    transition: 'transform 150ms ease',
+                                  }}
+                                />
+                              </button>
+                            )}
+                          </div>
+
+                          {hasSubs && isCatOpen && (
+                            <div className="flex flex-col pb-1.5">
+                              {c.subcategories.map((sub) => (
+                                <Link
+                                  key={sub._id}
+                                  href={categoryHref(sub.slug, group.qs)}
+                                  prefetch={false}
+                                  onClick={closeMobileMenu}
+                                  className="py-2 pl-10 text-[12.5px] tracking-wide"
+                                  style={{ color: COFFEE_FAINT }}
+                                >
+                                  {sub.name}
+                                </Link>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            ))}
+
+            <Link
+              href="/orders"
+              onClick={closeMobileMenu}
+              className="flex items-center justify-between py-3.5 text-[14px] tracking-[1.5px] uppercase"
+              style={{ color: COFFEE, borderBottom: `1px solid ${HAIRLINE}` }}
+            >
+              <span className="flex items-center gap-2.5">
+                <ClipboardList size={16} strokeWidth={1.5} />
+                Orders
+              </span>
+            </Link>
+
+            <Link
+              href="/wishlist"
+              onClick={closeMobileMenu}
+              className="flex items-center justify-between py-3.5 text-[14px] tracking-[1.5px] uppercase"
+              style={{ color: COFFEE, borderBottom: `1px solid ${HAIRLINE}` }}
+            >
+              <span className="flex items-center gap-2.5">
+                <Heart size={16} strokeWidth={1.5} />
+                Wishlist
+              </span>
+              {wishlistCount > 0 && (
+                <span
+                  className="text-[10px] font-semibold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 text-white"
+                  style={{ background: PEACH }}
+                >
+                  {wishlistCount > 9 ? '9+' : wishlistCount}
+                </span>
+              )}
+            </Link>
+
+            <Link
+              href="/cart"
+              onClick={closeMobileMenu}
+              className="flex items-center justify-between py-3.5 text-[14px] tracking-[1.5px] uppercase"
+              style={{ color: COFFEE, borderBottom: `1px solid ${HAIRLINE}` }}
+            >
+              <span className="flex items-center gap-2.5">
+                <ShoppingBag size={16} strokeWidth={1.5} />
+                Cart
+              </span>
+              {count > 0 && (
+                <span
+                  className="text-[10px] font-semibold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 text-white"
+                  style={{ background: PEACH }}
+                >
+                  {count > 9 ? '9+' : count}
+                </span>
+              )}
+            </Link>
+          </nav>
+        </div>
+      )}
+    </>
+  );
+}
